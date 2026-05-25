@@ -127,7 +127,8 @@ export async function POST(request: Request) {
 
 // 轮询任务状态
 async function handlePollTask(id: string, model: string = '', apiKey?: string) {
-  console.log('🔄 轮询任务状态:', id, '模型:', model);
+  console.log('==================== [轮询] 开始 ====================');
+  console.log('🔄 轮询任务ID:', id);
   
   // 如果没有提供 API Key，返回错误
   if (!apiKey) {
@@ -135,6 +136,7 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
     return NextResponse.json({ error: '请在设置中填写您的 API Key' }, { status: 400 });
   }
 
+  console.log('📤 发送请求到云雾 API...');
   const response = await fetch('https://yunwu.ai/v1/video/query', {
     method: 'POST',
     headers: {
@@ -145,7 +147,8 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
   });
 
   const responseText = await response.text();
-  console.log('📥 [轮询] 原始响应:', responseText);
+  console.log('📥 [轮询] 原始响应 (长度):', responseText.length);
+  console.log('📥 [轮询] 原始响应内容:', responseText);
 
   let result: any;
   try {
@@ -155,52 +158,61 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
     return NextResponse.json({ status: 'pending' });
   }
 
-  console.log('📋 [轮询] 解析结果:', JSON.stringify(result));
+  console.log('📋 [轮询] 完整解析结果:', JSON.stringify(result, null, 2));
   
-  // 🔍 详细打印所有字段
-  console.log('📋 [轮询] result.status:', result.status);
-  console.log('📋 [轮询] result.data:', JSON.stringify(result.data));
-  console.log('📋 [轮询] result.video_url:', result.video_url);
-  console.log('📋 [轮询] result.url:', result.url);
-  if (result.data) {
-    console.log('📋 [轮询] result.data.status:', result.data.status);
-    console.log('📋 [轮询] result.data.video_url:', result.data.video_url);
-    console.log('📋 [轮询] result.data.url:', result.data.url);
+  // 打印所有顶级字段
+  console.log('📋 [轮询] 所有顶级字段:', Object.keys(result));
+  
+  // 详细打印每个字段
+  for (const key of Object.keys(result)) {
+    const value = result[key];
+    if (typeof value === 'object' && value !== null) {
+      console.log(`📋 [轮询] ${key}:`, JSON.stringify(value, null, 2));
+    } else {
+      console.log(`📋 [轮询] ${key}:`, value);
+    }
   }
 
   // 检查多种可能的状态字段
   let status = 'pending';
   if (result.status) status = result.status;
   if (result.data?.status) status = result.data.status;
+  if (result.state) status = result.state; // 可能的字段名
+  if (result.data?.state) status = result.data.state; // 可能的字段名
 
   // 检查多种可能的视频URL字段
   let videoUrl = null;
   if (result.video_url) videoUrl = result.video_url;
   if (result.url) videoUrl = result.url;
+  if (result.video) videoUrl = result.video;
+  if (result.output) videoUrl = result.output;
   if (result.data?.video_url) videoUrl = result.data.video_url;
   if (result.data?.url) videoUrl = result.data.url;
+  if (result.data?.video) videoUrl = result.data.video;
+  if (result.data?.output) videoUrl = result.data.output;
 
   console.log('📊 [轮询] 最终检测状态:', status);
   console.log('🎬 [轮询] 最终检测视频URL:', videoUrl);
 
   // 兼容处理：只要有视频URL，不管状态字段是什么，都视为完成
-  if (status === 'completed' || videoUrl) {
-    console.log('✅ [轮询] 任务完成，返回 video_url:', videoUrl);
+  if (status === 'completed' || status === 'success' || videoUrl) {
+    console.log('✅ [轮询] 任务完成！');
+    console.log('✅ [轮询] 返回给前端的 video_url:', videoUrl);
     return NextResponse.json({ 
       status: 'completed', 
       video_url: videoUrl 
     });
-  } else if (status === 'processing' || status === 'pending') {
-    console.log('⏳ [轮询] 任务进行中');
+  } else if (status === 'processing' || status === 'pending' || status === 'in_progress') {
+    console.log('⏳ [轮询] 任务进行中...');
     return NextResponse.json({ status: 'processing' });
-  } else if (status === 'failed') {
+  } else if (status === 'failed' || status === 'error') {
     console.error('❌ [轮询] 任务失败');
     return NextResponse.json({ 
       status: 'failed', 
       error: result.error || result.data?.error || '生成失败' 
     });
   } else {
-    console.log('⏳ [轮询] 未识别状态，返回pending');
-    return NextResponse.json({ status: 'pending' });
+    console.log('⏳ [轮询] 未识别状态，返回processing');
+    return NextResponse.json({ status: 'processing' });
   }
 }
