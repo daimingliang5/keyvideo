@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ImageHeader from '../components/ImageHeader';
+import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 
 interface GenerationRecord {
@@ -44,7 +44,7 @@ export default function ImageGenerator() {
   const [recognition, setRecognition] = useState<any>(null);
   const [apiKey, setApiKey] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('userApiKey') || '';
+      return localStorage.getItem('userImageApiKey') || '';
     }
     return '';
   });
@@ -450,7 +450,7 @@ export default function ImageGenerator() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      <ImageHeader />
+      <Header />
 
       <div className="max-w-7xl mx-auto px-6 mb-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -580,7 +580,7 @@ export default function ImageGenerator() {
                     value={apiKey}
                     onChange={(e) => {
                       setApiKey(e.target.value);
-                      localStorage.setItem('userApiKey', e.target.value);
+                      localStorage.setItem('userImageApiKey', e.target.value);
                     }}
                     placeholder="填写您的API Key"
                     className="w-full px-4 py-2 bg-gray-900/80 border border-gray-700 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all text-sm"
