@@ -426,13 +426,13 @@ export default function Home() {
             <h2 className="text-lg font-semibold text-[#E5E5E5]" style={{ fontFamily: '"Noto Serif SC", Georgia, serif' }}>全局配置</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
             <div>
-              <label className="block text-sm text-[#888] mb-2">AI模型</label>
+              <label className="block text-sm text-gray-400 mb-2 font-medium">AI 模型</label>
               <select
                 value={globalConfig.model}
                 onChange={(e) => updateGlobalConfig('model', e.target.value)}
-                className="w-full bg-[#1A1C1E] border border-white/10 rounded-xl px-5 py-3 text-[#E5E5E5] focus:outline-none focus:border-[#D4AF37] transition-all appearance-none cursor-pointer"
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all appearance-none cursor-pointer"
               >
                 {MODELS.map(model => (
                   <option key={model.id} value={model.id}>{model.name}</option>
@@ -440,34 +440,34 @@ export default function Home() {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-[#888] mb-2">视频比例</label>
+              <label className="block text-sm text-gray-400 mb-2 font-medium">视频比例</label>
               <select
                 value={globalConfig.videoRatio}
                 onChange={(e) => updateGlobalConfig('videoRatio', e.target.value)}
-                className="w-full bg-[#1A1C1E] border border-white/10 rounded-xl px-5 py-3 text-[#E5E5E5] focus:outline-none focus:border-[#D4AF37] transition-all appearance-none cursor-pointer"
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all appearance-none cursor-pointer"
               >
                 <option value="16:9">横屏 16:9</option>
                 <option value="9:16">竖屏 9:16</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm text-[#888] mb-2">生成时长</label>
+              <label className="block text-sm text-gray-400 mb-2 font-medium">生成时长</label>
               <select
                 value={globalConfig.duration}
                 onChange={(e) => updateGlobalConfig('duration', Number(e.target.value))}
-                className="w-full bg-[#1A1C1E] border border-white/10 rounded-xl px-5 py-3 text-[#E5E5E5] focus:outline-none focus:border-[#D4AF37] transition-all appearance-none cursor-pointer"
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all appearance-none cursor-pointer"
               >
                 <option value={getCurrentModelConfig().duration}>{getCurrentModelConfig().duration}秒</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm text-[#888] mb-2">API Key</label>
+              <label className="block text-sm text-gray-400 mb-2 font-medium">API Key</label>
               <input
                 type="password"
                 value={globalConfig.apiKey}
                 onChange={(e) => updateGlobalConfig('apiKey', e.target.value)}
-                placeholder="填写您的API Key"
-                className="w-full bg-[#1A1C1E] border border-white/10 rounded-xl px-5 py-3 text-[#E5E5E5] focus:outline-none focus:border-[#D4AF37] transition-all"
+                placeholder="请输入您的 API Key"
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all"
               />
             </div>
           </div>
