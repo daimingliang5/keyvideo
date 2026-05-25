@@ -25,7 +25,7 @@ export default function Header() {
     checkSession();
 
     // 监听登录状态变化
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUser(session.user);
       } else {
@@ -34,7 +34,7 @@ export default function Header() {
     });
 
     return () => {
-      listener?.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
