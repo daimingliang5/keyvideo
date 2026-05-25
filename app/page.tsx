@@ -21,13 +21,12 @@ interface ModelConfig {
   id: string;
   name: string;
   duration: number;
-  cost: number;
 }
 
 const MODELS: ModelConfig[] = [
-  { id: 'grok-video-3-10s', name: 'Grok 3', duration: 10, cost: 3 },
-  { id: 'veo', name: 'VEO', duration: 8, cost: 3 },
-  { id: 'veo-4k', name: 'VEO 4K', duration: 8, cost: 3 },
+  { id: 'grok-video-3-10s', name: 'Grok 3', duration: 10 },
+  { id: 'veo', name: 'VEO', duration: 8 },
+  { id: 'veo-4k', name: 'VEO 4K', duration: 8 },
 ];
 
 interface GlobalConfig {
@@ -78,14 +77,10 @@ export default function Home() {
     return MODELS.find(m => m.id === globalConfig.model) || MODELS[0];
   };
 
-  const [credits, setCredits] = useState(0);
-
   const pollingIntervalsRef = useRef<Record<number, ReturnType<typeof setInterval>>>({});
   const fileInputRef = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
-    loadUserCredits();
-    
     // 刷新页面后，恢复正在处理中的任务的轮询
     const pendingTasks = tasks.filter(t => t.status === 'pending' || t.status === 'processing');
     if (pendingTasks.length > 0) {
@@ -107,18 +102,6 @@ export default function Home() {
       }
     }
   }, [tasks]);
-
-  const loadUserCredits = async () => {
-    try {
-      const response = await fetch('/api/get-user-points');
-      if (response.ok) {
-        const data = await response.json();
-        setCredits(data.credits || 0);
-      }
-    } catch (error) {
-      console.error('Failed to load user credits:', error);
-    }
-  };
 
   const isGenerating = (status: TaskStatus): boolean => {
     return ['pending', 'processing'].includes(status);
@@ -197,7 +180,7 @@ export default function Home() {
         const pollResponse = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: taskIdStr, poll: true }),
+          body: JSON.stringify({ id: taskIdStr, poll: true, apiKey: globalConfig.apiKey }),
         });
 
         const pollText = await pollResponse.text();
@@ -229,16 +212,6 @@ export default function Home() {
           setTasks(prevTasks => prevTasks.map(t =>
             t.id === taskIdNum ? { ...t, status: 'completed' as TaskStatus, videoUrl } : t
           ));
-          // 刷新积分显示
-          loadUserCredits();
-          // 刷新 Header 组件的积分显示
-          console.log('[视频生成] 尝试调用 refreshUserCredits');
-          if ((window as any).refreshUserCredits) {
-            console.log('[视频生成] refreshUserCredits 存在，调用中...');
-            (window as any).refreshUserCredits();
-          } else {
-            console.log('[视频生成] refreshUserCredits 不存在');
-          }
         } else if (pollResult.status === 'failed') {
           clearInterval(pollInterval);
           delete pollingIntervalsRef.current[taskIdNum];
@@ -247,7 +220,6 @@ export default function Home() {
           ));
           alert(`视频生成失败:\n${pollResult.error || '未知错误'}`);
         } else if (pollCount >= maxPollCount) {
-          // 超时处理
           clearInterval(pollInterval);
           delete pollingIntervalsRef.current[taskIdNum];
           setTasks(prevTasks => prevTasks.map(t =>
@@ -271,7 +243,7 @@ export default function Home() {
     }, 5000);
 
     pollingIntervalsRef.current[taskIdNum] = pollInterval;
-  }, []);
+  }, [globalConfig.apiKey]);
 
   const updateTask = (taskId: number, field: string, value: string) => {
     setTasks(prevTasks => prevTasks.map(task =>
@@ -348,17 +320,6 @@ export default function Home() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('points')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.points < modelConfig.cost) {
-      alert(`积分不足！当前积分: ${profile?.points || 0}，生成视频需要 ${modelConfig.cost} 积分`);
-      return;
-    }
-
     const { model, videoRatio, duration, apiKey } = globalConfig;
 
     if (!apiKey) {
@@ -375,7 +336,6 @@ export default function Home() {
       model,
       aspect_ratio: videoRatio,
       duration: duration,
-      user_id: user.id,
       apiKey: apiKey,
     };
 
@@ -413,12 +373,6 @@ export default function Home() {
         setTasks(prevTasks => prevTasks.map(t =>
           t.id === taskId ? { ...t, status: 'completed' as TaskStatus, videoUrl: data.video_url, taskId: data.id } : t
         ));
-        // 刷新积分显示
-        loadUserCredits();
-        // 刷新 Header 组件的积分显示
-        if ((window as any).refreshUserCredits) {
-          (window as any).refreshUserCredits();
-        }
       } else if (data.status === 'failed') {
         setTasks(prevTasks => prevTasks.map(t =>
           t.id === taskId ? { ...t, status: 'failed' as TaskStatus } : t
@@ -515,13 +469,6 @@ export default function Home() {
                 placeholder="填写您的API Key"
                 className="w-full bg-[#1A1C1E] border border-white/10 rounded-xl px-5 py-3 text-[#E5E5E5] focus:outline-none focus:border-[#D4AF37] transition-all"
               />
-            </div>
-            <div>
-              <label className="block text-sm text-[#888] mb-2">积分消耗</label>
-              <div className="w-full bg-[#1A1C1E] border border-yellow-500/30 rounded-xl px-5 py-3 flex items-center justify-between">
-                <span className="text-yellow-400">{getCurrentModelConfig().name}</span>
-                <span className="text-[#E5E5E5] font-medium">消耗 {getCurrentModelConfig().cost} 积分</span>
-              </div>
             </div>
           </div>
 

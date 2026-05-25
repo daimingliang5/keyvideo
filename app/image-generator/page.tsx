@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import ImageHeader from '../components/ImageHeader';
 import { supabase } from '../lib/supabase';
 
-const COST_PER_IMAGE = 2;
-
 interface GenerationRecord {
   id: string;
   prompt: string;
@@ -44,29 +42,12 @@ export default function ImageGenerator() {
   const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
-  const [credits, setCredits] = useState(0);
   const [apiKey, setApiKey] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('userApiKey') || '';
     }
     return '';
   });
-
-  useEffect(() => {
-    loadUserCredits();
-  }, []);
-
-  const loadUserCredits = async () => {
-    try {
-      const response = await fetch('/api/get-user-points');
-      if (response.ok) {
-        const data = await response.json();
-        setCredits(data.credits || 0);
-      }
-    } catch (error) {
-      console.error('Failed to load user credits:', error);
-    }
-  };
 
   const MAX_HISTORY_RECORDS = 10; // 最多保存10条记录
 
@@ -281,20 +262,6 @@ export default function ImageGenerator() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('points')
-      .eq('id', user.id)
-      .single();
-
-    console.log('profile:', profile);
-    console.log('points:', profile?.points || 0);
-    if (!profile || profile.points < COST_PER_IMAGE) {
-      console.log('❌ 积分不足');
-      alert(`积分不足！当前积分: ${profile?.points || 0}，生成图片需要 ${COST_PER_IMAGE} 积分`);
-      return;
-    }
-    
     if (mode === 'image' && uploadedImages.length === 0) {
       console.log('❌ 图生图模式但未上传图片');
       alert('请先上传图片');
@@ -333,7 +300,6 @@ export default function ImageGenerator() {
         model: 'gpt-image-2-all',
         size: getSizeFromRatio(ratio),
         n: 1,
-        user_id: user.id,
         apiKey: apiKey,
       };
 
@@ -451,13 +417,6 @@ export default function ImageGenerator() {
           saveHistory(updated);
           return updated;
         });
-
-        // 刷新积分显示
-        loadUserCredits();
-        // 同时刷新 Header 的积分显示
-        if ((window as any).refreshUserCredits) {
-          (window as any).refreshUserCredits();
-        }
       } else {
         console.warn('No images returned in response');
         throw new Error('API 返回的数据格式不正确');
