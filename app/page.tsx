@@ -412,7 +412,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#1A1C1E]">
-      <Header credits={credits} costPerVideo={getCurrentModelConfig().cost} />
+      <Header />
 
       <div className="max-w-7xl mx-auto px-6 mb-8">
         <div className="bg-[#222428] backdrop-blur-md rounded-2xl border border-white/10 p-6" style={{ boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)' }}>
