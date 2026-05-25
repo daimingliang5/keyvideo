@@ -136,14 +136,16 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
     return NextResponse.json({ error: '请在设置中填写您的 API Key' }, { status: 400 });
   }
 
-  console.log('📤 发送请求到云雾 API...');
-  const response = await fetch('https://yunwu.ai/v1/video/query', {
-    method: 'POST',
+  console.log('📤 发送请求到云雾 API (GET)...');
+  const url = new URL('https://yunwu.ai/v1/video/query');
+  url.searchParams.append('id', id);
+  
+  const response = await fetch(url.toString(), {
+    method: 'GET',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ id }),
   });
 
   const responseText = await response.text();
