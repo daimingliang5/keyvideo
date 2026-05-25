@@ -144,15 +144,46 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
     body: JSON.stringify({ id }),
   });
 
-  const result = await response.json();
-  
-  if (result.status === 'completed' && result.video_url) {
-    return NextResponse.json({ status: 'completed', video_url: result.video_url });
+  const responseText = await response.text();
+  console.log('📥 [轮询] 原始响应:', responseText);
+
+  let result: any;
+  try {
+    result = JSON.parse(responseText);
+  } catch (e) {
+    console.error('❌ [轮询] JSON解析失败:', e);
+    return NextResponse.json({ status: 'pending' });
+  }
+
+  console.log('📋 [轮询] 解析结果:', JSON.stringify(result, null, 2));
+
+  // 检查可能的完成状态和视频URL
+  let videoUrl = null;
+  if (result.video_url) videoUrl = result.video_url;
+  if (result.url) videoUrl = result.url;
+  if (result.data?.video_url) videoUrl = result.data.video_url;
+  if (result.data?.url) videoUrl = result.data.url;
+
+  console.log('🎬 [轮询] 视频URL:', videoUrl);
+  console.log('📊 [轮询] 状态:', result.status);
+
+  // 检查完成状态
+  if (result.status === 'completed' && videoUrl) {
+    console.log('✅ [轮询] 任务完成');
+    return NextResponse.json({ status: 'completed', video_url: videoUrl });
   } else if (result.status === 'processing' || result.status === 'pending') {
+    console.log('⏳ [轮询] 任务进行中');
     return NextResponse.json({ status: 'processing' });
   } else if (result.status === 'failed') {
+    console.error('❌ [轮询] 任务失败');
     return NextResponse.json({ status: 'failed', error: result.error || '生成失败' });
   } else {
+    // 如果没有明确的状态，但有视频URL，也认为完成
+    if (videoUrl) {
+      console.log('✅ [轮询] 没有明确状态但有视频URL，视为完成');
+      return NextResponse.json({ status: 'completed', video_url: videoUrl });
+    }
+    console.log('⏳ [轮询] 默认pending状态');
     return NextResponse.json({ status: 'pending' });
   }
 }
