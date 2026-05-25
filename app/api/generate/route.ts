@@ -182,7 +182,7 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
   if (result.state) status = result.state; // 可能的字段名
   if (result.data?.state) status = result.data.state; // 可能的字段名
 
-  // 检查多种可能的视频URL字段
+  // 检查多种可能的视频URL字段（支持Grok和VEO）
   let videoUrl = null;
   if (result.video_url) videoUrl = result.video_url;
   if (result.url) videoUrl = result.url;
@@ -192,6 +192,11 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
   if (result.data?.url) videoUrl = result.data.url;
   if (result.data?.video) videoUrl = result.data.video;
   if (result.data?.output) videoUrl = result.data.output;
+  // VEO 可能的字段：detail.images[0].url
+  if (result.detail?.images && Array.isArray(result.detail.images) && result.detail.images[0]?.url) {
+    videoUrl = result.detail.images[0].url;
+  }
+  if (result.detail?.video_url) videoUrl = result.detail.video_url;
 
   console.log('📊 [轮询] 最终检测状态:', status);
   console.log('🎬 [轮询] 最终检测视频URL:', videoUrl);
