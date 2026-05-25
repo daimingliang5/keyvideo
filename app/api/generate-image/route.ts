@@ -2,22 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
 import { getSupabaseServer } from '@/app/lib/supabase-server';
 
-const API_KEY = process.env.IMAGE_API_KEY || '';
 const COST_PER_IMAGE = 2;
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, model, size, n = 1, image, user_id } = await request.json();
+    const { prompt, model, size, n = 1, image, user_id, apiKey: userApiKey } = await request.json();
 
     console.log('========== 图片生成请求 ==========');
     console.log('user_id:', user_id);
     console.log('prompt:', prompt?.substring(0, 50));
-    console.log('API_KEY configured:', API_KEY ? 'Yes' : 'No');
 
-    // 检查 API Key
-    if (!API_KEY) {
-      console.error('❌ 环境变量 IMAGE_API_KEY 未配置');
-      return NextResponse.json({ error: '服务器配置错误' }, { status: 500 });
+    // 检查用户是否提供了 API Key
+    if (!userApiKey) {
+      console.error('❌ 用户未提供 API Key');
+      return NextResponse.json({ error: '请在设置中填写您的 API Key' }, { status: 400 });
     }
 
     // 检查参数
@@ -137,7 +135,7 @@ export async function POST(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`,
+          'Authorization': `Bearer ${userApiKey}`,
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal,

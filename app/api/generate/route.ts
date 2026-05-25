@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
 import { getSupabaseServer } from '@/app/lib/supabase-server';
 
-const GROK_API_KEY = process.env.GROK_API_KEY || '';
 const VEO_API_KEY = process.env.VEO_API_KEY || '';
 const COST_PER_VIDEO = 3;
 
@@ -18,36 +17,30 @@ const isVeoModel = (model: string): boolean => {
   return model === 'veo' || model === 'veo-4k' || model?.startsWith('veo');
 };
 
-// 获取当前模型对应的API密钥
-const getApiKey = (model: string): string => {
-  if (isVeoModel(model)) {
-    return VEO_API_KEY;
-  }
-  return GROK_API_KEY;
-};
-
 export async function POST(request: Request) {
   const startTime = Date.now();
 
   try {
     const body = await request.json();
-    const { prompt, model, input_reference, poll, id, aspect_ratio, duration, user_id } = body;
+    const { prompt, model, input_reference, poll, id, aspect_ratio, duration, user_id, apiKey: userApiKey } = body;
 
     console.log('========== 视频生成请求 ==========');
     console.log('poll:', poll, 'id:', id);
     console.log('user_id:', user_id);
-    const currentApiKey = getApiKey(model || '');
-    console.log('📋 当前模型:', model, '使用密钥:', currentApiKey ? '已配置' : '未配置');
 
-    if (!currentApiKey) {
-      const keyName = isVeoModel(model || '') ? 'VEO_API_KEY' : 'GROK_API_KEY';
-      console.error('❌ 环境变量', keyName, '未配置');
-      return NextResponse.json({ error: '服务器配置错误，请联系管理员' }, { status: 500 });
+    // 获取用户提供的 API Key，如果没有提供则报错
+    if (!userApiKey) {
+      console.error('❌ 用户未提供 API Key');
+      return NextResponse.json({ error: '请在设置中填写您的 API Key' }, { status: 400 });
     }
+    console.log('📋 当前模型:', model, '使用用户提供的密钥');
+
+    // 对于 VEO 模型，还需要检查环境变量中的 VEO_API_KEY
+    const currentApiKey = userApiKey;
 
     // 轮询模式 - 查询任务状态
     if (poll && id) {
-      return handlePollTask(id, user_id, model || '');
+      return handlePollTask(id, user_id, model || '', userApiKey);
     }
 
     // 新建任务模式 - 创建视频
@@ -221,11 +214,14 @@ export async function POST(request: Request) {
 }
 
 // 轮询任务状态
-async function handlePollTask(id: string, userId: string, model: string = '') {
+async function handlePollTask(id: string, userId: string, model: string = '', apiKey?: string) {
   console.log('🔄 轮询任务状态:', id, '模型:', model);
   
-  // 根据模型获取对应的API密钥
-  const apiKey = getApiKey(model);
+  // 如果没有提供 API Key，返回错误
+  if (!apiKey) {
+    console.error('❌ 轮询时未提供 API Key');
+    return NextResponse.json({ error: '请在设置中填写您的 API Key' }, { status: 400 });
+  }
   
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);

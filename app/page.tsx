@@ -34,6 +34,7 @@ interface GlobalConfig {
   model: string;
   videoRatio: string;
   duration: number;
+  apiKey: string;
 }
 
 export default function Home() {
@@ -55,10 +56,22 @@ export default function Home() {
     ];
   });
 
-  const [globalConfig, setGlobalConfig] = useState<GlobalConfig>({
-    model: 'grok-video-3-10s',
-    videoRatio: '16:9',
-    duration: 10,
+  const [globalConfig, setGlobalConfig] = useState<GlobalConfig>(() => {
+    if (typeof window !== 'undefined') {
+      const savedApiKey = localStorage.getItem('userApiKey') || '';
+      return {
+        model: 'grok-video-3-10s',
+        videoRatio: '16:9',
+        duration: 10,
+        apiKey: savedApiKey,
+      };
+    }
+    return {
+      model: 'grok-video-3-10s',
+      videoRatio: '16:9',
+      duration: 10,
+      apiKey: '',
+    };
   });
 
   const getCurrentModelConfig = () => {
@@ -128,6 +141,7 @@ export default function Home() {
       model: 'grok-video-3-10s',
       videoRatio: '16:9',
       duration: 10,
+      apiKey: globalConfig.apiKey,
     });
   };
 
@@ -275,6 +289,10 @@ export default function Home() {
           duration: modelConfig?.duration || prevConfig.duration 
         };
       }
+      if (field === 'apiKey') {
+        // 保存到 localStorage
+        localStorage.setItem('userApiKey', value as string);
+      }
       return { ...prevConfig, [field]: value };
     });
   }, []);
@@ -341,7 +359,12 @@ export default function Home() {
       return;
     }
 
-    const { model, videoRatio, duration } = globalConfig;
+    const { model, videoRatio, duration, apiKey } = globalConfig;
+
+    if (!apiKey) {
+      alert('请先在设置中填写您的 API Key');
+      return;
+    }
 
     setTasks(prevTasks => prevTasks.map(t =>
       t.id === taskId ? { ...t, status: 'pending' as TaskStatus, model } : t
@@ -353,6 +376,7 @@ export default function Home() {
       aspect_ratio: videoRatio,
       duration: duration,
       user_id: user.id,
+      apiKey: apiKey,
     };
 
     if (task.imageUrl && task.imageUrl.trim()) {
@@ -448,7 +472,7 @@ export default function Home() {
             <h2 className="text-lg font-semibold text-[#E5E5E5]" style={{ fontFamily: '"Noto Serif SC", Georgia, serif' }}>全局配置</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-5">
             <div>
               <label className="block text-sm text-[#888] mb-2">AI模型</label>
               <select
@@ -481,6 +505,16 @@ export default function Home() {
               >
                 <option value={getCurrentModelConfig().duration}>{getCurrentModelConfig().duration}秒</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm text-[#888] mb-2">API Key</label>
+              <input
+                type="password"
+                value={globalConfig.apiKey}
+                onChange={(e) => updateGlobalConfig('apiKey', e.target.value)}
+                placeholder="填写您的API Key"
+                className="w-full bg-[#1A1C1E] border border-white/10 rounded-xl px-5 py-3 text-[#E5E5E5] focus:outline-none focus:border-[#D4AF37] transition-all"
+              />
             </div>
             <div>
               <label className="block text-sm text-[#888] mb-2">积分消耗</label>

@@ -45,6 +45,12 @@ export default function ImageGenerator() {
   const [isRecording, setIsRecording] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
   const [credits, setCredits] = useState(0);
+  const [apiKey, setApiKey] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('userApiKey') || '';
+    }
+    return '';
+  });
 
   useEffect(() => {
     loadUserCredits();
@@ -294,6 +300,12 @@ export default function ImageGenerator() {
       alert('请先上传图片');
       return;
     }
+
+    if (!apiKey) {
+      console.log('❌ 用户未提供 API Key');
+      alert('请先在设置中填写您的 API Key');
+      return;
+    }
     
     console.log('✅ 所有检查通过，准备发送请求');
     console.log('上传的图片:', uploadedImages?.map((img, i) => `图片${i+1}: ${img?.substring(0, 30)}...`));
@@ -322,6 +334,7 @@ export default function ImageGenerator() {
         size: getSizeFromRatio(ratio),
         n: 1,
         user_id: user.id,
+        apiKey: apiKey,
       };
 
       if (mode === 'image' && uploadedImages.length > 0) {
@@ -596,6 +609,23 @@ export default function ImageGenerator() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-cyan-400 text-sm font-medium mb-2">
+                    <span className="w-2 h-2 bg-cyan-400 rounded-full"></span>
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => {
+                      setApiKey(e.target.value);
+                      localStorage.setItem('userApiKey', e.target.value);
+                    }}
+                    placeholder="填写您的API Key"
+                    className="w-full px-4 py-2 bg-gray-900/80 border border-gray-700 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all text-sm"
+                  />
                 </div>
 
                 <button
