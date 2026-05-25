@@ -155,7 +155,18 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
     return NextResponse.json({ status: 'pending' });
   }
 
-  console.log('📋 [轮询] 解析结果:', JSON.stringify(result, null, 2));
+  console.log('📋 [轮询] 解析结果:', JSON.stringify(result));
+  
+  // 🔍 详细打印所有字段
+  console.log('📋 [轮询] result.status:', result.status);
+  console.log('📋 [轮询] result.data:', JSON.stringify(result.data));
+  console.log('📋 [轮询] result.video_url:', result.video_url);
+  console.log('📋 [轮询] result.url:', result.url);
+  if (result.data) {
+    console.log('📋 [轮询] result.data.status:', result.data.status);
+    console.log('📋 [轮询] result.data.video_url:', result.data.video_url);
+    console.log('📋 [轮询] result.data.url:', result.data.url);
+  }
 
   // 检查多种可能的状态字段
   let status = 'pending';
@@ -169,12 +180,12 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
   if (result.data?.video_url) videoUrl = result.data.video_url;
   if (result.data?.url) videoUrl = result.data.url;
 
-  console.log('📊 [轮询] 状态:', status);
-  console.log('🎬 [轮询] 视频URL:', videoUrl);
+  console.log('📊 [轮询] 最终检测状态:', status);
+  console.log('🎬 [轮询] 最终检测视频URL:', videoUrl);
 
   // 兼容处理：只要有视频URL，不管状态字段是什么，都视为完成
   if (status === 'completed' || videoUrl) {
-    console.log('✅ [轮询] 任务完成');
+    console.log('✅ [轮询] 任务完成，返回 video_url:', videoUrl);
     return NextResponse.json({ 
       status: 'completed', 
       video_url: videoUrl 
@@ -189,7 +200,7 @@ async function handlePollTask(id: string, model: string = '', apiKey?: string) {
       error: result.error || result.data?.error || '生成失败' 
     });
   } else {
-    console.log('⏳ [轮询] 默认pending状态');
+    console.log('⏳ [轮询] 未识别状态，返回pending');
     return NextResponse.json({ status: 'pending' });
   }
 }
