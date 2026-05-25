@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 
@@ -12,6 +12,31 @@ export default function Header() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginUsername, setLoginUsername] = useState('');
+
+  // 组件挂载时检查登录状态
+  useEffect(() => {
+    // 获取当前会话
+    const checkSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        setUser(data.session.user);
+      }
+    };
+    checkSession();
+
+    // 监听登录状态变化
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      listener?.unsubscribe();
+    };
+  }, []);
 
   const handleLogin = async () => {
     if (!loginEmail.trim() || !loginPassword.trim()) {
