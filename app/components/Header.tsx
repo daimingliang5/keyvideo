@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 
 export default function Header() {
+  const pathname = usePathname();
   const [showLogin, setShowLogin] = useState(false);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -119,12 +121,20 @@ export default function Header() {
       <header className="py-8 text-center relative">
         <div className="flex justify-center gap-6 mb-8">
           <Link href="/">
-            <button className="px-8 py-4 bg-[#D4AF37] text-[#1A1C1E] rounded-2xl font-medium transition-all duration-300 hover:bg-[#E8C860] hover:shadow-lg hover:shadow-[#D4AF37]/20 flex items-center gap-3 text-lg" style={{ border: '1px solid rgba(212, 175, 55, 0.3)' }}>
+            <button className={`px-8 py-4 rounded-2xl font-medium transition-all duration-300 flex items-center gap-3 text-lg ${
+              pathname === '/' 
+                ? 'bg-[#D4AF37] text-[#1A1C1E] hover:bg-[#E8C860] hover:shadow-lg hover:shadow-[#D4AF37]/20' 
+                : 'bg-[#2A2C2E] text-[#E5E5E5] hover:bg-[#3A3C3E]'
+            }`} style={{ border: pathname === '/' ? '1px solid rgba(212, 175, 55, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)' }}>
               🎬 视频生成工具
             </button>
           </Link>
           <Link href="/image-generator">
-            <button className="px-8 py-4 bg-[#2A2C2E] text-[#E5E5E5] rounded-2xl font-medium transition-all duration-300 hover:bg-[#3A3C3E] flex items-center gap-3 text-lg" style={{ border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <button className={`px-8 py-4 rounded-2xl font-medium transition-all duration-300 flex items-center gap-3 text-lg ${
+              pathname === '/image-generator' 
+                ? 'bg-[#06B6D4] text-[#1A1C1E] hover:bg-[#22D3EE] hover:shadow-lg hover:shadow-[#06B6D4]/20' 
+                : 'bg-[#2A2C2E] text-[#E5E5E5] hover:bg-[#3A3C3E]'
+            }`} style={{ border: pathname === '/image-generator' ? '1px solid rgba(6, 182, 212, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)' }}>
               🎨 图像生成工具
             </button>
           </Link>
