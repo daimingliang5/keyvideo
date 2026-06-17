@@ -79,7 +79,7 @@ export default function Home() {
   };
 
   const pollingIntervalsRef = useRef<Record<number, ReturnType<typeof setInterval>>>({});
-  const fileInputRef = useRef<Record<number, HTMLInputElement | null>>({});
+  const fileInputRef = useRef<Record<number, Record<number, HTMLInputElement | null>>>({});
 
   useEffect(() => {
     // 刷新页面后，恢复正在处理中的任务的轮询
@@ -635,9 +635,9 @@ export default function Home() {
                         <input
                           ref={(el) => { 
                             if (!fileInputRef.current[task.id]) {
-                              fileInputRef.current[task.id] = {} as Record<number, HTMLInputElement>;
+                              fileInputRef.current[task.id] = {} as Record<number, HTMLInputElement | null>;
                             }
-                            fileInputRef.current[task.id][index] = el!;
+                            fileInputRef.current[task.id][index] = el;
                           }}
                           type="file"
                           accept="image/*"
