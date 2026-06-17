@@ -148,9 +148,63 @@ export default function Home() {
   }, []);
 
   const MAX_IMAGES = 3;
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_WIDTH = 1920;
+  const MAX_HEIGHT = 1080;
 
-  const handleFileSelect = useCallback((taskId: number, imageIndex: number, file: File | null) => {
+  const compressImage = useCallback(async (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          
+          // 缩放图片到最大尺寸
+          if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+            const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // 根据文件大小调整质量
+            let quality = 0.9;
+            if (file.size > 5 * 1024 * 1024) {
+              quality = 0.7;
+            } else if (file.size > 2 * 1024 * 1024) {
+              quality = 0.8;
+            }
+            
+            const base64 = canvas.toDataURL('image/jpeg', quality);
+            resolve(base64);
+          } else {
+            // 如果canvas不可用，返回原始文件
+            resolve(event.target?.result as string);
+          }
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const handleFileSelect = useCallback(async (taskId: number, imageIndex: number, file: File | null) => {
     if (!file) return;
+
+    // 检查文件大小
+    if (file.size > MAX_FILE_SIZE) {
+      alert(`图片大小不能超过 ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+      return;
+    }
 
     const previewUrl = URL.createObjectURL(file);
     setTasks(prevTasks => prevTasks.map(t => {
@@ -162,9 +216,8 @@ export default function Home() {
       return t;
     }));
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
+    try {
+      const base64 = await compressImage(file);
       setTasks(prevTasks => prevTasks.map(t => {
         if (t.id === taskId) {
           const newUrls = [...t.imageUrls];
@@ -173,9 +226,24 @@ export default function Home() {
         }
         return t;
       }));
-    };
-    reader.readAsDataURL(file);
-  }, []);
+    } catch (error) {
+      console.error('图片压缩失败:', error);
+      // 压缩失败时使用原始文件
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        setTasks(prevTasks => prevTasks.map(t => {
+          if (t.id === taskId) {
+            const newUrls = [...t.imageUrls];
+            newUrls[imageIndex] = base64;
+            return { ...t, imageUrls: newUrls };
+          }
+          return t;
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [compressImage]);
 
   const removeImage = useCallback((taskId: number, imageIndex: number) => {
     setTasks(prevTasks => prevTasks.map(t => {
