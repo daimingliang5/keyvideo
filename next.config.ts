@@ -5,9 +5,6 @@ const nextConfig: NextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['supabase'],
   },
-  serverRuntimeConfig: {
-    maxRequestBodySize: '50mb',
-  },
 };
 
 export default nextConfig;
