@@ -9,8 +9,8 @@ type TaskStatus = 'idle' | 'pending' | 'processing' | 'completed' | 'failed' | '
 interface Task {
   id: number;
   prompt: string;
-  imageUrl: string;
-  imagePreview: string;
+  imageUrls: string[];
+  imagePreviews: string[];
   status: TaskStatus;
   videoUrl: string;
   taskId: string;
@@ -50,9 +50,9 @@ export default function Home() {
       }
     }
     return [
-      { id: 1, prompt: '', imageUrl: '', imagePreview: '', status: 'idle', videoUrl: '', taskId: '' },
-      { id: 2, prompt: '', imageUrl: '', imagePreview: '', status: 'idle', videoUrl: '', taskId: '' },
-      { id: 3, prompt: '', imageUrl: '', imagePreview: '', status: 'idle', videoUrl: '', taskId: '' },
+      { id: 1, prompt: '', imageUrls: [], imagePreviews: [], status: 'idle', videoUrl: '', taskId: '' },
+      { id: 2, prompt: '', imageUrls: [], imagePreviews: [], status: 'idle', videoUrl: '', taskId: '' },
+      { id: 3, prompt: '', imageUrls: [], imagePreviews: [], status: 'idle', videoUrl: '', taskId: '' },
     ];
   });
 
@@ -110,16 +110,16 @@ export default function Home() {
 
   const addTask = () => {
     const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
-    setTasks([...tasks, { id: newId, prompt: '', imageUrl: '', imagePreview: '', status: 'idle', videoUrl: '', taskId: '', model: '' }]);
+    setTasks([...tasks, { id: newId, prompt: '', imageUrls: [], imagePreviews: [], status: 'idle', videoUrl: '', taskId: '', model: '' }]);
   };
 
   const clearAll = () => {
     Object.values(pollingIntervalsRef.current).forEach(interval => clearInterval(interval));
     pollingIntervalsRef.current = {};
     setTasks([
-      { id: 1, prompt: '', imageUrl: '', imagePreview: '', status: 'idle', videoUrl: '', taskId: '', model: '' },
-      { id: 2, prompt: '', imageUrl: '', imagePreview: '', status: 'idle', videoUrl: '', taskId: '', model: '' },
-      { id: 3, prompt: '', imageUrl: '', imagePreview: '', status: 'idle', videoUrl: '', taskId: '', model: '' },
+      { id: 1, prompt: '', imageUrls: [], imagePreviews: [], status: 'idle', videoUrl: '', taskId: '', model: '' },
+      { id: 2, prompt: '', imageUrls: [], imagePreviews: [], status: 'idle', videoUrl: '', taskId: '', model: '' },
+      { id: 3, prompt: '', imageUrls: [], imagePreviews: [], status: 'idle', videoUrl: '', taskId: '', model: '' },
     ]);
     setGlobalConfig({
       model: 'grok-video-3-10s',
@@ -147,22 +147,58 @@ export default function Home() {
     ));
   }, []);
 
-  const handleFileSelect = useCallback((taskId: number, file: File | null) => {
+  const MAX_IMAGES = 3;
+
+  const handleFileSelect = useCallback((taskId: number, imageIndex: number, file: File | null) => {
     if (!file) return;
 
     const previewUrl = URL.createObjectURL(file);
-    setTasks(prevTasks => prevTasks.map(t =>
-      t.id === taskId ? { ...t, imagePreview: previewUrl } : t
-    ));
+    setTasks(prevTasks => prevTasks.map(t => {
+      if (t.id === taskId) {
+        const newPreviews = [...t.imagePreviews];
+        newPreviews[imageIndex] = previewUrl;
+        return { ...t, imagePreviews: newPreviews };
+      }
+      return t;
+    }));
 
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64 = e.target?.result as string;
-      setTasks(prevTasks => prevTasks.map(t =>
-        t.id === taskId ? { ...t, imageUrl: base64 } : t
-      ));
+      setTasks(prevTasks => prevTasks.map(t => {
+        if (t.id === taskId) {
+          const newUrls = [...t.imageUrls];
+          newUrls[imageIndex] = base64;
+          return { ...t, imageUrls: newUrls };
+        }
+        return t;
+      }));
     };
     reader.readAsDataURL(file);
+  }, []);
+
+  const removeImage = useCallback((taskId: number, imageIndex: number) => {
+    setTasks(prevTasks => prevTasks.map(t => {
+      if (t.id === taskId) {
+        const newUrls = [...t.imageUrls];
+        const newPreviews = [...t.imagePreviews];
+        newUrls.splice(imageIndex, 1);
+        newPreviews.splice(imageIndex, 1);
+        return { ...t, imageUrls: newUrls, imagePreviews: newPreviews };
+      }
+      return t;
+    }));
+  }, []);
+
+  const updateImageUrl = useCallback((taskId: number, imageIndex: number, url: string) => {
+    setTasks(prevTasks => prevTasks.map(t => {
+      if (t.id === taskId) {
+        const newUrls = [...t.imageUrls];
+        newUrls[imageIndex] = url;
+        return { ...t, imageUrls: newUrls };
+      }
+      return t;
+    }));
   }, []);
 
   const pollTask = useCallback(async (taskIdStr: string, taskIdNum: number) => {
@@ -340,8 +376,10 @@ export default function Home() {
       apiKey: apiKey,
     };
 
-    if (task.imageUrl && task.imageUrl.trim()) {
-      requestBody.input_reference = task.imageUrl;
+    // 支持多张参考图（最多3张）
+    const validImageUrls = task.imageUrls.filter(url => url && url.trim());
+    if (validImageUrls.length > 0) {
+      requestBody.input_reference = validImageUrls;
     }
 
     try {
@@ -589,64 +627,81 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-[#888] mb-2">参考图（可选）</label>
-                  <input
-                    ref={(el) => { fileInputRef.current[task.id] = el; }}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleFileSelect(task.id, e.target.files?.[0] || null)}
-                  />
-                  {task.imagePreview ? (
-                    <div className="space-y-3">
-                      <div className="relative border border-white/10 rounded-xl overflow-hidden bg-[#1A1C1E]">
-                        <img src={task.imagePreview} alt="预览" className="w-full h-32 object-contain" />
-                        <button
-                          onClick={() => {
-                            setTasks(prevTasks => prevTasks.map(t =>
-                              t.id === task.id ? { ...t, imagePreview: '', imageUrl: '' } : t
-                            ));
-                            const fileInput = fileInputRef.current[task.id];
-                            if (fileInput) {
-                              fileInput.value = '';
+                  <label className="block text-xs text-[#888] mb-2">参考图（可选，最多3张）</label>
+                  {/* 上传区域 */}
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    {[0, 1, 2].map((index) => (
+                      <div key={index}>
+                        <input
+                          ref={(el) => { 
+                            if (!fileInputRef.current[task.id]) {
+                              fileInputRef.current[task.id] = {} as Record<number, HTMLInputElement>;
                             }
+                            fileInputRef.current[task.id][index] = el!;
                           }}
-                          className="absolute top-2 right-2 w-6 h-6 bg-[#EF4444] text-white rounded-full flex items-center justify-center hover:bg-[#DC2626] transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileSelect(task.id, index, e.target.files?.[0] || null)}
+                        />
+                        {task.imagePreviews[index] ? (
+                          <div className="relative border border-white/10 rounded-xl overflow-hidden bg-[#1A1C1E] aspect-square">
+                            <img 
+                              src={task.imagePreviews[index]} 
+                              alt={`预览图${index + 1}`} 
+                              className="w-full h-full object-contain" 
+                            />
+                            <button
+                              onClick={() => {
+                                removeImage(task.id, index);
+                                const fileInput = fileInputRef.current[task.id]?.[index];
+                                if (fileInput) {
+                                  fileInput.value = '';
+                                }
+                              }}
+                              className="absolute top-1 right-1 w-5 h-5 bg-[#EF4444] text-white rounded-full flex items-center justify-center hover:bg-[#DC2626] transition-colors"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => fileInputRef.current[task.id]?.[index]?.click()}
+                            className="border-2 border-dashed border-white/10 rounded-xl p-4 text-center hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/5 transition-all cursor-pointer bg-[#1A1C1E] aspect-square flex flex-col items-center justify-center gap-1"
+                          >
+                            <svg className="w-6 h-6 text-[#666]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-xs text-[#666]">图{index + 1}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex gap-3">
+                    ))}
+                  </div>
+                  {/* URL输入区域 */}
+                  <div className="space-y-2">
+                    {[0, 1, 2].map((index) => (
+                      <div key={index} className="flex gap-2">
+                        <span className="text-xs text-[#666] mt-3 w-6">图{index + 1}</span>
                         <input
                           type="text"
-                          value={task.imageUrl}
-                          onChange={(e) => updateTask(task.id, 'imageUrl', e.target.value)}
-                          className="flex-1 bg-[#1A1C1E] border border-white/10 rounded-xl px-4 py-3 text-sm text-[#E5E5E5] placeholder-[#666] focus:outline-none focus:border-[#D4AF37] transition-all"
+                          value={task.imageUrls[index] || ''}
+                          onChange={(e) => updateImageUrl(task.id, index, e.target.value)}
+                          className="flex-1 bg-[#1A1C1E] border border-white/10 rounded-xl px-4 py-2 text-sm text-[#E5E5E5] placeholder-[#666] focus:outline-none focus:border-[#D4AF37] transition-all"
                           placeholder="图片 URL"
                         />
                         <button
-                          onClick={() => copyToClipboard(task.imageUrl)}
-                          className="px-4 py-3 text-sm bg-[#1A1C1E] text-[#D4AF37] border border-[#D4AF37]/30 rounded-xl hover:bg-[#D4AF37]/10 transition-all"
+                          onClick={() => copyToClipboard(task.imageUrls[index] || '')}
+                          disabled={!task.imageUrls[index]}
+                          className="px-3 py-2 text-xs bg-[#1A1C1E] text-[#D4AF37] border border-[#D4AF37]/30 rounded-xl hover:bg-[#D4AF37]/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           复制
                         </button>
                       </div>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => fileInputRef.current[task.id]?.click()}
-                      className="border border-white/10 rounded-xl p-5 text-center hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/5 transition-all cursor-pointer bg-[#1A1C1E]"
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <svg className="w-8 h-8 text-[#D4AF37]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-sm text-[#888]">点击上传</span>
-                      </div>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
 
                 {isGenerating(task.status) ? (

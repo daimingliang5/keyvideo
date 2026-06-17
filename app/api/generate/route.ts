@@ -46,6 +46,21 @@ export async function POST(request: Request) {
     const apiModel = MODEL_MAPPING[model || 'grok-video-3-10s'] || 'grok-video-3-10s';
     console.log('📋 使用模型:', apiModel, '(前端模型:', model, ')');
     
+    // 处理参考图：支持单个字符串或数组
+    const processInputReference = (ref: unknown): string[] => {
+      if (!ref) return [];
+      if (Array.isArray(ref)) {
+        return ref.filter(url => typeof url === 'string' && url.trim()).map(url => (url as string).trim());
+      }
+      if (typeof ref === 'string') {
+        return ref.trim() ? [ref.trim()] : [];
+      }
+      return [];
+    };
+    
+    const images = processInputReference(input_reference);
+    console.log('📋 参考图数量:', images.length);
+    
     // 根据模型类型构建请求体
     let requestBody: Record<string, unknown>;
     
@@ -54,7 +69,7 @@ export async function POST(request: Request) {
       requestBody = {
         model: apiModel,
         prompt: prompt,
-        images: input_reference ? [input_reference.trim()] : [],
+        images: images,
         enhance_prompt: true,
         enable_upsample: true,
         aspect_ratio: aspect_ratio || '16:9',
@@ -66,7 +81,7 @@ export async function POST(request: Request) {
         prompt: prompt,
         aspect_ratio: aspect_ratio || '16:9',
         size: '720P',
-        images: input_reference ? [input_reference.trim()] : [],
+        images: images,
       };
     }
 
