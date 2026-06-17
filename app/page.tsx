@@ -40,13 +40,26 @@ export default function Home() {
   const [showVideoKey, setShowVideoKey] = useState(false);
   const [tasks, setTasks] = useState<Task[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('videoTasks');
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          // 如果解析失败，返回默认值
+      try {
+        const saved = localStorage.getItem('videoTasks');
+        if (saved) {
+          // 检查数据大小，超过 5MB 则清除
+          if (saved.length > 5 * 1024 * 1024) {
+            localStorage.removeItem('videoTasks');
+            console.warn('视频任务数据过大，已清除');
+          } else {
+            const parsed = JSON.parse(saved);
+            // 兼容旧数据格式
+            return parsed.map((t: any) => ({
+              ...t,
+              imageUrls: t.imageUrls || (t.imageUrl ? [t.imageUrl] : []),
+              imagePreviews: t.imagePreviews || (t.imagePreview ? [t.imagePreview] : []),
+            }));
+          }
         }
+      } catch (error) {
+        console.error('读取视频任务失败:', error);
+        localStorage.removeItem('videoTasks');
       }
     }
     return [
